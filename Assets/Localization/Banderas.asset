@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4db626ad063b13545924a9839ac5fa83, type: 3}
+  m_Name: Banderas
+  m_EditorClassIdentifier: Unity.Localization.Editor::UnityEditor.Localization.AssetTableCollection
+  m_SharedTableData: {fileID: 11400000, guid: 795828f62b792db48a69684b793924f2, type: 2}
+  m_Tables:
+  - {fileID: 11400000, guid: 38daf2cd6a8ee0d47bb5c6511bebc20f, type: 2}
+  - {fileID: 11400000, guid: 9894730f4aea7704da92ef8ff3819cc6, type: 2}
+  - {fileID: 11400000, guid: bf3ac1af12a072740a08bfdf3a539339, type: 2}
+  - {fileID: 11400000, guid: 6473cca68c2959e46aebb38a6d8da638, type: 2}
+  - {fileID: 11400000, guid: 0330ce9ddda95424d8a8e011527559ce, type: 2}
+  - {fileID: 11400000, guid: 01fef60c96fa3794e810db86915ebf09, type: 2}
+  - {fileID: 11400000, guid: 7e7ab0a5c3173e04d96926530a1e2262, type: 2}
+  m_Extensions: []
+  m_Group: Asset Table
+  references:
+    version: 2
+    RefIds: []
