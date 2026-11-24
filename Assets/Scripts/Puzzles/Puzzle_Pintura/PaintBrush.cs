@@ -1,187 +1,76 @@
 using UnityEngine;
-using UnityEngine.Events;
 
-// =====================================================================
-//  PaintBrush.cs  (PUZZLE 1: PINTURA Y COLORES)
-//  ---------------------------------------------------------------------
-//  Va en el JUGADOR. Es su "pincel / cañón de pintura".
-//    - E (cerca de un PaintSource): carga ese tinte. Si ya llevas otro
-//      color, se mezclan según la tabla de PaintColors.cs.
-//    - Clic izquierdo: dispara un rayo hacia donde apunta la cámara; si
-//      golpea un PaintReceiver, lo pinta con el color que lleves.
-//  La pintura es limitada: tras "shotsPerLoad" disparos te quedas sin color.
-//
-//  Si ya tienes tu propio control del jugador, desactiva "useBuiltInInput"
-//  y llama tú a TryLoadNearest() y Fire() desde tu script.
-// =====================================================================
+//Va en el JUGADOR
+//E = coge el color del bote que estes mirando (si ya llevas uno, se MEZCLAN)
+//Q = limpia el pincel
+//Clic = dispara pintura a lo que estes mirando
 public class PaintBrush : MonoBehaviour
 {
-    [Header("Cargar tinte")]
-    [Min(0.5f), Tooltip("Distancia máxima a una fuente de tinte para poder cogerlo")]
-    public float interactRange = 2.5f;
 
-    [Tooltip("Si está activado, un tinte nuevo se MEZCLA con el que ya llevas. Si no, lo reemplaza")]
-    public bool mixOnPickup = true;
+    //Desde donde sale el rayo (el pivot / camara). Si se deja vacio usa la camara principal
+    [SerializeField] private Transform aimOrigin;
+    //A que distancia puedes coger pintura de un bote
+    [SerializeField] private float pickupRange = 3f;
+    //A que distancia llega el disparo
+    [SerializeField] private float shootRange = 20f;
+    //Opcional: un objeto que muestra el color que llevas
+    [SerializeField] private Renderer indicator;
+    //Boton del raton para disparar (0 = izquierdo, 1 = derecho)
+    [SerializeField] private int mouseButton = 0;
 
-    [Min(0), Tooltip("Disparos que da cada carga. 0 = infinitos")]
-    public int shotsPerLoad = 3;
+    //El color que lleva el pincel ahora mismo
+    private PaintColor currentColor = PaintColor.None;
 
-    [Header("Disparo")]
-    [Tooltip("Desde dónde sale el rayo. Si lo dejas vacío usa la cámara principal (MainCamera)")]
-    public Transform aimOrigin;
+    void Start()
+    {
+        if (aimOrigin == null) aimOrigin = Camera.main.transform;
+        ShowColor();
+    }
 
-    [Min(1f), Tooltip("Alcance máximo del disparo en metros")]
-    public float maxDistance = 30f;
-
-    [Tooltip("Capas que puede golpear el disparo. Quita la capa del jugador para no dispararte a ti")]
-    public LayerMask layerMask = ~0;
-
-    [Min(0f), Tooltip("Segundos mínimos entre disparos")]
-    public float shotCooldown = 0.25f;
-
-    [Header("Feedback")]
-    [Tooltip("Objeto que muestra el color que llevas (la punta del pincel, un frasco, etc.)")]
-    public Renderer colorIndicator;
-
-    [Tooltip("Prefab con partículas que aparece al impactar (se tiñe del color de la pintura). Opcional")]
-    public GameObject hitEffectPrefab;
-
-    [Header("Entrada")]
-    [Tooltip("Desactívalo si controlas el pincel desde tu propio script")]
-    public bool useBuiltInInput = true;
-
-    [Header("Eventos")]
-    public UnityEvent onColorChanged;   // Cambia el color que llevas
-    public UnityEvent onShoot;          // Disparas
-    public UnityEvent onNoPaint;        // Intentas disparar sin pintura
-
-    [Header("Debug (solo lectura)")]
-    [SerializeField] PuzzleColor currentColor = PuzzleColor.None;
-    [SerializeField] int shotsLeft;
-
-    float lastShotTime = -99f;
-
-    public PuzzleColor CurrentColor => currentColor;
-
-    void Start() { RefreshIndicator(); }
-
-    // Cada frame lee las teclas (si la entrada integrada está activada).
     void Update()
     {
-        if (!useBuiltInInput) return;
-        if (PuzzleInput.InteractDown()) TryLoadNearest();
-        if (PuzzleInput.FireDown()) Fire();
-    }
+        if (Input.GetKeyDown(KeyCode.E)) TakePaint();
 
-    // Busca la fuente de tinte más cercana dentro del alcance y carga su color.
-    public bool TryLoadNearest()
-    {
-        PaintSource best = null;
-        float bestDist = interactRange;
-
-        foreach (PaintSource s in PaintSource.All)
+        if (Input.GetKeyDown(KeyCode.Q))
         {
-            float d = Vector3.Distance(transform.position, s.transform.position);
-            if (d <= bestDist) { bestDist = d; best = s; }
+            currentColor = PaintColor.None;
+            ShowColor();
         }
 
-        if (best == null) return false;
-        LoadDye(best.color);
-        return true;
+        if (Input.GetMouseButtonDown(mouseButton)) Shoot();
     }
 
-    // Carga un color en el pincel (mezclándolo con el actual si mixOnPickup está activo).
-    public void LoadDye(PuzzleColor dye)
+    void TakePaint()
     {
-        if (dye == PuzzleColor.None)
+        //Lanza un rayo hacia donde miras para ver si hay un bote
+        if (Physics.Raycast(aimOrigin.position, aimOrigin.forward, out RaycastHit hit, pickupRange))
         {
-            Clear();            // "Agua": limpia el pincel
-            return;
+            PaintSource source = hit.collider.GetComponentInParent<PaintSource>();
+
+            if (source != null)
+            {
+                //Mezclar = unir los bits de los dos colores (rojo + amarillo = naranja...)
+                currentColor = (PaintColor)((int)currentColor | (int)source.color);
+                ShowColor();
+            }
         }
-
-        currentColor = mixOnPickup ? PaintMixer.Mix(currentColor, dye) : dye;
-        shotsLeft = shotsPerLoad;
-        RefreshIndicator();
-        onColorChanged.Invoke();
     }
 
-    // Vacía el pincel.
-    public void Clear()
+    void Shoot()
     {
-        currentColor = PuzzleColor.None;
-        shotsLeft = 0;
-        RefreshIndicator();
-        onColorChanged.Invoke();
-    }
+        if (currentColor == PaintColor.None) return;
 
-    // Dispara un rayo y pinta lo que golpee.
-    public void Fire()
-    {
-        if (Time.time - lastShotTime < shotCooldown) return;
-
-        if (currentColor == PuzzleColor.None)
+        if (Physics.Raycast(aimOrigin.position, aimOrigin.forward, out RaycastHit hit, shootRange))
         {
-            onNoPaint.Invoke();
-            return;
+            PaintTarget target = hit.collider.GetComponentInParent<PaintTarget>();
+
+            if (target != null) target.Paint(currentColor);
         }
-
-        lastShotTime = Time.time;
-        Transform aim = GetAim();
-
-        if (Physics.Raycast(aim.position, aim.forward, out RaycastHit hit, maxDistance, layerMask, QueryTriggerInteraction.Ignore))
-        {
-            // El receptor puede estar en el objeto golpeado o en uno de sus padres
-            PaintReceiver receiver = hit.collider.GetComponentInParent<PaintReceiver>();
-            if (receiver != null) receiver.ApplyPaint(currentColor);
-
-            SpawnHitEffect(hit.point + hit.normal * 0.02f, hit.normal);
-        }
-
-        onShoot.Invoke();
-        ConsumeShot();
     }
 
-    // Resta un disparo y vacía el pincel si se acaba la carga.
-    void ConsumeShot()
+    void ShowColor()
     {
-        if (shotsPerLoad <= 0) return; // Infinitos
-        shotsLeft--;
-        if (shotsLeft <= 0) Clear();
+        if (indicator != null) indicator.material.color = PaintSource.realColors[(int)currentColor];
     }
 
-    // Crea las partículas del impacto con el color de la pintura.
-    void SpawnHitEffect(Vector3 point, Vector3 normal)
-    {
-        if (hitEffectPrefab == null) return;
-
-        GameObject fx = Instantiate(hitEffectPrefab, point, Quaternion.LookRotation(normal));
-        Color c = PaintMixer.ToColor(currentColor);
-        foreach (ParticleSystem ps in fx.GetComponentsInChildren<ParticleSystem>())
-        {
-            ParticleSystem.MainModule main = ps.main;
-            main.startColor = c;
-        }
-        Destroy(fx, 3f);
-    }
-
-    // Origen del disparo: el que asignes, la cámara principal, o el propio jugador.
-    Transform GetAim()
-    {
-        if (aimOrigin != null) return aimOrigin;
-        if (Camera.main != null) return Camera.main.transform;
-        return transform;
-    }
-
-    // Actualiza el color del indicador visual.
-    void RefreshIndicator()
-    {
-        PuzzleTint.SetColor(colorIndicator, PaintMixer.ToColor(currentColor));
-    }
-
-    // Muestra el alcance de interacción en la ventana Scene.
-    void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, interactRange);
-    }
 }
