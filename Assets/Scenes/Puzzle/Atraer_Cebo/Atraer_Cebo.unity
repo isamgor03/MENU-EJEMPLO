@@ -447,7 +447,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LureAnimal
   detectRadius: 15
-  eatDistance: 1.5
+  eatDistance: 0.7
   eatTime: 2
   OnEat:
     m_PersistentCalls:
@@ -1167,7 +1167,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LureThrower
   lurePrefab: {fileID: 5107776853380517765, guid: 38bd4b57a1d327042827eae0a94cd6bb, type: 3}
   aimOrigin: {fileID: 27635765}
-  throwForce: 8
+  throwForce: 10
   upForce: 1
   ammo: 10
   mouseButton: 0
