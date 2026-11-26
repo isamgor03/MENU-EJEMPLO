@@ -1167,7 +1167,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LureThrower
   lurePrefab: {fileID: 5107776853380517765, guid: 38bd4b57a1d327042827eae0a94cd6bb, type: 3}
   aimOrigin: {fileID: 27635765}
-  throwForce: 10
+  throwForce: 7
   upForce: 1
   ammo: 10
   mouseButton: 0
